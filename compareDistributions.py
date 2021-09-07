@@ -19,7 +19,7 @@ parser.add_argument("-a", "--append", type=str, default="", help="string to appe
 parser.add_argument("-r", "--ratioRange", type=float, nargs=2, default=[0.9, 1.1])
 parser.add_argument("--noHtml", action='store_true', help="Don't make html in output folder")
 args = parser.parse_args()
-
+xvar = args.hist
 if len(args.samples) > 1 and len(args.input_files) != len(args.samples):
     raise RuntimeError("If more than one input file is specified, each file should be specified per sample")
 
@@ -39,6 +39,11 @@ def plotHists(bins, centralName, datasets, ratioRange=[0.9, 1.1], width=1):
     ax2.set_ylim(ratioRange)
     ax1.set_xticklabels([])
     ax1.legend()
+    print(xvar)
+    if xvar == 'ptl':
+        xlabel = '$p_{T}^{\\ell}\\,$[GeV]'
+    ax2.set_xlabel(xlabel)
+    ax1.set_ylabel("Events/bin")
     return fig
 
 def compareDistributions():
