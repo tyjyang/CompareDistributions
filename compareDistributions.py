@@ -30,6 +30,7 @@ plt.style.use([mplhep.style.ROOT])
 cmap = matplotlib.cm.get_cmap('tab20b')    
 # For a small number of clusters, make them pretty
 all_colors_ = [matplotlib.colors.rgb2hex(cmap(i)) for i in range(cmap.N)]
+all_colors_.insert(0, 'black')
 
 def plotHists(bins, centralName, datasets, ratioRange=[0.9, 1.1], width=1):
     fig = plt.figure(figsize=(8*width,8))
@@ -37,7 +38,6 @@ def plotHists(bins, centralName, datasets, ratioRange=[0.9, 1.1], width=1):
     ax2 = fig.add_subplot(4, 1, 4) 
     centralHist = datasets[centralName]["hist"]
     for name, dataset in datasets.items():
-        print(name)
         hist = dataset["hist"]
         args = {"label" : name, "color" : dataset["color"]}
         ax1.hist(bins[:-1], bins=bins, weights=hist, histtype='step', **args)
@@ -58,12 +58,10 @@ def compareDistributions():
     elif len(samples) == 1 and len(uncertainties) > 1:
         logging.info("Assuming sample %s for all plots" % samples[0])
         samples = samples*len(uncertainties)
-        print("Length of uncertainties", len(uncertainties))
     if len(filenames) == 1 and len(samples) > 1:
-        print("Yes, here")
         filenames = filenames*len(samples)
-        print("len samples", len(samples))
-    print(filenames)
+    elif len(filenames) > 1 and len(filenames)+1 == len(uncertainties):
+        filenames.insert(0, filenames[0])
 
     outputPath = "/".join([args.outputPath, args.outputFolder, "plots"])
     if not os.path.isdir(outputPath):
@@ -71,13 +69,13 @@ def compareDistributions():
 
     datasets = {}
     bins = []
-    print(samples, filenames, uncertainties)
 
     for i, (sample, filename, unc) in enumerate(zip(samples, filenames, uncertainties)):
         print(sample, filename, unc)
         rtfile = uproot.open(filename)    
         cenName = "Central" if unc == "" and len(uncertainties) > 1 else sample
 
+        color = all_colors_[i if not i%2 else len(all_colors_)-i-1]
         if unc == "" or args.rawUnc:
             name = unc
             histname = "%s/%s_%s_%s" % (sample, args.hist, unc, args.channel)
@@ -89,7 +87,7 @@ def compareDistributions():
             datasets.update({
                 name :
                     { "hist" : hist,
-                    "color" : all_colors_[i]
+                    "color" : color,
                     },
             })
         else:    
@@ -98,11 +96,11 @@ def compareDistributions():
             datasets.update({
                 unc + " up": 
                     { "hist" : histUp,
-                    "color" : all_colors_[i]
+                    "color" : color,
                     },
                 unc + " down": 
                     { "hist" : histDown,
-                    "color" : all_colors_[i]
+                    "color" : color,
                     },
             })
     cenName = "Central" if args.uncertainties else samples[0]
