@@ -23,38 +23,6 @@ def writeHTML(path, name):
         index.write('  <div style="text-align: center;"><b>{title}</b></div>\n'
                 '  <table>\n'.format(title=name)
         )
-        if "Nonprompt" in path:
-            relative_path = path.split("/")[-1].replace("Nonprompt", "MC") 
-            index.write('  <div style="text-align: center;">Monte Carlo based plots: \n'
-                    '  <a href="../%s">[MC plots]</a>' % relative_path +
-                    '</div>\n'
-                    '  <table>\n'
-            )
-        elif "MC" in path:
-            relative_path = path.split("/")[-1].replace("MC", "Nonprompt") 
-            index.write('  <div style="text-align: center;">Plots with data driven background: \n'
-                    '  <a href="../%s">[Nonprompt plots]</a>' % relative_path +
-                    '</div>\n'
-                    '  <table>\n'
-            )
-        if path.split("/")[-1] not in ["eee", "eem", "emm", "mmm"]:
-            index.write('  <div style="text-align: center;">Plots by channel: \n'
-                    '  <a href="eee">[eee]</a> - '
-                    '  <a href="eem">[eem]</a> - '
-                    '  <a href="emm">[emm]</a> - '
-                    '  <a href="mmm">[mmm]</a>'
-                    '</div>\n'
-                    '  <table>\n'
-            )
-        else:
-            index.write('  <div style="text-align: center;">Plots by channel: \n'
-                    '  <a href="../eee">[eee]</a> - '
-                    '  <a href="../eem">[eem]</a> - '
-                    '  <a href="../emm">[emm]</a> - '
-                    '  <a href="../mmm">[mmm]</a>'
-                    '</div>\n'
-                    '  <table>\n'
-            )
         for i, image_file in enumerate(image_files):
             file_name = image_file.strip().split('/')[-1].strip() 
             if i % 3 == 0: 
