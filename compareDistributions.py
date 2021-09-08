@@ -27,7 +27,8 @@ if len(args.samples) > 1 and len(args.input_files) != len(args.samples):
     raise RuntimeError("If more than one input file is specified, each file should be specified per sample")
 
 plt.style.use([mplhep.style.ROOT])
-cmap = matplotlib.cm.get_cmap('tab20b')    
+# cmap = matplotlib.cm.get_cmap('tab20b')    
+cmap = matplotlib.cm.get_cmap('Set1')
 # For a small number of clusters, make them pretty
 all_colors_ = [matplotlib.colors.rgb2hex(cmap(i)) for i in range(cmap.N)]
 all_colors_.insert(0, 'black')
@@ -45,12 +46,14 @@ def plotHists(bins, centralName, datasets, ratioRange=[0.9, 1.1], width=1):
         ax2.hist(bins[:-1], bins=bins, weights=ratio, histtype='step', **args)
     ax2.set_ylim(ratioRange)
     ax1.set_xticklabels([])
-    ax1.legend()
+    ax1.legend(fontsize=12)
     print(xvar)
     if xvar == 'ptl':
         xlabel = '$p_{T}^{\\ell}\\,$[GeV]'
     ax2.set_xlabel(xlabel)
     ax1.set_ylabel("Events/bin")
+    ax2.set_ylabel("$(\\delta N + N)/N$")
+    plt.subplots_adjust(left=0.15, right = 0.95)
     return fig
 
 def compareDistributions():
@@ -74,7 +77,6 @@ def compareDistributions():
 
     datasets = {}
     bins = []
-
     for i, (sample, filename, unc) in enumerate(zip(samples, filenames, uncertainties)):
         print(sample, filename, unc)
         rtfile = uproot.open(filename)    
@@ -98,6 +100,8 @@ def compareDistributions():
         else:    
             histUp,bins = rtfile["%s/%s_%sUp_%s" % (sample, args.hist, unc, args.channel)].to_numpy()
             histDown,_ = rtfile["%s/%s_%sDown_%s" % (sample, args.hist, unc, args.channel)].to_numpy()
+            if len(uncertainties) > 2 and uncertainties[1] == uncertainties[2]:
+                unc = unc+"_"+filename.split('/')[-2].split('_')[-1]
             datasets.update({
                 unc + " up": 
                     { "hist" : histUp,
