@@ -19,6 +19,9 @@ parser.add_argument("-p", "--outputPath", type=str, default=os.path.expanduser("
 parser.add_argument("-o", "--outputFolder", type=str, default="Test")
 parser.add_argument("-a", "--append", type=str, default="", help="string to append to output file name")
 parser.add_argument("-r", "--ratioRange", type=float, nargs=2, default=[0.9, 1.1])
+parser.add_argument("-x", "--xRange", type=float, nargs=2, default=[])
+parser.add_argument("--xlabel", type=str)
+parser.add_argument("--scaleleg", type=float, default=1.)
 parser.add_argument("--rawUnc", action='store_true', help="Don't append up or down to uncertainty name")
 parser.add_argument("--noHtml", action='store_true', help="Don't make html in output folder")
 args = parser.parse_args()
@@ -32,20 +35,36 @@ cmap = matplotlib.cm.get_cmap('tab20b')
 all_colors_ = [matplotlib.colors.rgb2hex(cmap(i)) for i in range(cmap.N)]
 all_colors_.insert(0, 'black')
 
-def plotHists(bins, centralName, datasets, ratioRange=[0.9, 1.1], width=1):
+def plotHists(bins, centralName, datasets, ratioRange=[0.9, 1.1], width=1, xlim=[],
+        xlabel="", scaleleg=1.):
     fig = plt.figure(figsize=(8*width,8))
     ax1 = fig.add_subplot(4, 1, (1, 3)) 
     ax2 = fig.add_subplot(4, 1, 4) 
     centralHist = datasets[centralName]["hist"]
     for name, dataset in datasets.items():
         hist = dataset["hist"]
+        if "down" in name and name.replace("down", "up") in datasets:
+            name = ""
+        elif "up" in name and name.replace("up", "down") in datasets:
+            if "20MeV" in name:
+                name = r"m$_{\mathrm{W}} \pm$ 20 MeV" 
+            elif "100MeV" in name:
+                name = r"m$_{\mathrm{W}} \pm$ 100 MeV" 
+            else:
+                name = name.replace("up", r"$\pm 1\sigma$")
+
         args = {"label" : name, "color" : dataset["color"]}
         ax1.hist(bins[:-1], bins=bins, weights=hist, histtype='step', **args)
         ratio = np.divide(hist, centralHist, out=np.zeros_like(hist), where=centralHist!=0)
         ax2.hist(bins[:-1], bins=bins, weights=ratio, histtype='step', **args)
     ax2.set_ylim(ratioRange)
     ax1.set_xticklabels([])
-    ax1.legend()
+    if xlim:
+        ax1.set_xlim(xlim)
+        ax2.set_xlim(xlim)
+    ax1.legend(prop={'size' : 20*scaleleg})
+    ax2.set_xlabel(xlabel)
+    ax1.set_ylabel("Events/bin")
     return fig
 
 def compareDistributions():
@@ -104,11 +123,14 @@ def compareDistributions():
                     },
             })
     cenName = "Central" if args.uncertainties else samples[0]
-    fig = plotHists(bins, cenName, datasets, ratioRange=args.ratioRange)
+    fig = plotHists(bins, cenName, datasets, ratioRange=args.ratioRange, 
+            xlim=args.xRange, xlabel=args.xlabel, scaleleg=args.scaleleg,
+            width=(1 if "unrolled" not in args.hist else 2))
     append = uncertainties[1:min(4, len(uncertainties))]
     if args.append:
         append = append + [args.append]
     outfile = "%s/%s_%s.pdf" % (outputPath, args.hist, "_".join(append))
+
     fig.savefig(outfile)
     fig.savefig(outfile.replace(".pdf", ".png"))
     logging.info(f"Wrote output file {outfile}")
