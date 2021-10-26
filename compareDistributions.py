@@ -5,6 +5,7 @@ import mplhep
 import numpy as np
 import argparse
 import os
+import re
 import logging
 from Utilities import makeSimpleHtml
 logging.basicConfig(level=logging.INFO)
@@ -15,19 +16,26 @@ parser.add_argument("-s", "--samples", nargs="*", type=str, help="Samples to plo
 parser.add_argument("-u", "--uncertainties", nargs="*", type=str, help="Uncertainty distributions to plot")
 parser.add_argument("-b", "--hist", type=str, help="Distribution to plot", required=True)
 parser.add_argument("-c", "--channel", type=str, help="Channel to plot", required=True)
-parser.add_argument("-p", "--outputPath", type=str, default=os.path.expanduser("~/www/PlottingResults"))
-parser.add_argument("-o", "--outputFolder", type=str, default="Test")
+parser.add_argument("-p", "--outputPath", type=str, default="/eos/user/t/tyjyang/www/plots/")
+parser.add_argument("-o", "--outputFolder", type=str, default="wmass/pdf_unc/histvar")
 parser.add_argument("-a", "--append", type=str, default="", help="string to append to output file name")
 parser.add_argument("-r", "--ratioRange", type=float, nargs=2, default=[0.9, 1.1])
 parser.add_argument("-x", "--xRange", type=float, nargs=2, default=[])
+parser.add_argument("--pdf", type=str)
 parser.add_argument("--xlabel", type=str)
 parser.add_argument("--scaleleg", type=float, default=1.)
+
+# last two are grouped in the same folder
+# the rest are the parent directories for plots scanning multiple parameters
+parser.add_argument("--scanorder", type=str, default="pdf,channel,hist,unc")
+
 parser.add_argument("--rawUnc", action='store_true', help="Don't append up or down to uncertainty name")
 parser.add_argument("--noHtml", action='store_true', help="Don't make html in output folder")
 args = parser.parse_args()
 xvar = args.hist
 if len(args.samples) > 1 and len(args.input_files) != len(args.samples):
     raise RuntimeError("If more than one input file is specified, each file should be specified per sample")
+scanorder = args.scanorder.split(",")
 
 plt.style.use([mplhep.style.ROOT])
 # cmap = matplotlib.cm.get_cmap('tab20b')    
@@ -61,9 +69,6 @@ def plotHists(bins, centralName, datasets, ratioRange=[0.9, 1.1], width=1, xlim=
     ax2.set_ylim(ratioRange)
     ax1.set_xticklabels([])
     ax1.legend(fontsize=12)
-    print(xvar)
-    if xvar == 'ptl':
-        xlabel = '$p_{T}^{\\ell}\\,$[GeV]'
     ax2.set_xlabel(xlabel)
     ax1.set_ylabel("Events/bin")
     ax2.set_ylabel("$(\\delta N + N)/N$")
@@ -73,6 +78,26 @@ def plotHists(bins, centralName, datasets, ratioRange=[0.9, 1.1], width=1, xlim=
         ax2.set_xlim(xlim)
     ax1.legend(prop={'size' : 20*scaleleg})
     return fig
+
+'''
+INPUT -------------------------------------------------------------------------
+|* (str) full_xvar: the full name of the hist variable, segmented by "_"
+|* (str) str_to_rid: the segment in full_xvar to get rid of, can be in regex
+|  
+ROUTINE -----------------------------------------------------------------------
+|* split the full_xvar in segments separated by "_"
+|* get rid of the segments that match str_to_rid
+| 
+OUTPUT ------------------------------------------------------------------------
+|* (str) the shortened string, also in segments of "_"
++------------------------------------------------------------------------------ 
+''' 
+def shorten_xvar(full_xvar, str_to_rid):
+	full_xvar_arr = full_xvar.split("_")
+	short_xvar_arr = []
+	for element in full_xvar_arr:
+		if not re.match(str_to_rid, element): short_xvar_arr.append(element)
+	return "_".join(short_xvar_arr)
 
 def compareDistributions():
     samples = args.samples
@@ -88,11 +113,14 @@ def compareDistributions():
         filenames = filenames*len(samples)
     elif len(filenames) > 1 and len(filenames)+1 == len(uncertainties):
         filenames.insert(0, filenames[0])
-
-    outputPath = "/".join([args.outputPath, args.outputFolder, "plots"])
+    args.unc = "-".join(uncertainties[1:min(4, len(uncertainties))])
+    
+    outputPath = "/".join([args.outputPath, args.outputFolder] + 
+                          [getattr(args, x) for x in scanorder[:-2]])
     if not os.path.isdir(outputPath):
         os.makedirs(outputPath)
-
+    #remove files with a different scanorder 
+    os.system("rm " + outputPath + "/" + getattr(args, scanorder[-1]) + "*")
     datasets = {}
     bins = []
     for i, (sample, filename, unc) in enumerate(zip(samples, filenames, uncertainties)):
@@ -137,11 +165,17 @@ def compareDistributions():
     append = uncertainties[1:min(4, len(uncertainties))]
     if args.append:
         append = append + [args.append]
-    outfile = "%s/%s_%s.pdf" % (outputPath, args.hist, "_".join(append))
+    str_to_rid = "w[mp]munu|minnlo"
+    outfile = "%s/%s-%s.pdf" % (
+        outputPath, 
+        shorten_xvar(getattr(args, scanorder[-2]), str_to_rid), 
+        shorten_xvar(getattr(args, scanorder[-1]), str_to_rid))
 
     fig.savefig(outfile)
     fig.savefig(outfile.replace(".pdf", ".png"))
     logging.info(f"Wrote output file {outfile}")
+    if not os.path.exists(outputPath + '/index.php'):
+        os.system('cp ~/scripts/index.php ' + outputPath)
 
     if not args.noHtml:
         makeSimpleHtml.writeHTML(outputPath[:-6], "test")
